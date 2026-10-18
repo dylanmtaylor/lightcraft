@@ -18,7 +18,7 @@
 </p>
 
 <p align="center">
-  <b>Photo library and raw development; an open-source, clean-room reimplementation of Adobe Lightroom, rebuilt in pure Rust.</b><br>
+  <b>Photo library and raw development; an open-source, non-destructive photo library and raw developer, built in pure Rust.</b><br>
   Native on macOS, Windows and Linux. In the browser via WebAssembly. Drivable end to end by AI agents over MCP.
 </p>
 
@@ -333,9 +333,9 @@ lightcraft --control 7980 ~/Pictures/trip
 LightCraft is young and moving fast: **alpha**. **Where we honestly stand** (details in the [roadmap](ROADMAP.md) and
 [docs/target-app-parity.md](docs/target-app-parity.md)):
 
-- **By feature count we're at ~82%** of Lightroom (core features 98%), tracked row by row in
+- **By feature count we're at ~82%** (core features 98%), tracked row by row in
   [docs/parity-checklist.md](docs/parity-checklist.md).
-- **As a day-to-day Lightroom replacement we're nearer 61% for the whole product, ~51% for a typical working photographer and ~65% for
+- **As a day-to-day tool we're nearer 61% for the whole product, ~51% for a typical working photographer and ~65% for
   casual use.** It's great for JPEG/DNG and most Sony / Panasonic /
   Fujifilm / Nikon / older-Canon raws on one machine; see [docs/raw-parity.md](docs/raw-parity.md) for your camera.
 - **The biggest gaps:**
@@ -513,9 +513,9 @@ egui frontend is one swappable crate; nothing below it knows a UI exists. `mcp` 
 
 Humans and agents follow the same rules, so read [AGENTS.md](AGENTS.md) first. The short version:
 
-- **Clean-room.** Never read Adobe binaries or GPL raw/photo code (darktable, RawTherapee, LibRaw, rawspeed, dcraw…);
+- **Clean-room.** Never read proprietary binaries or GPL raw/photo code (darktable, RawTherapee, LibRaw, rawspeed, dcraw…);
   work from public specs and black-box observation.
-- **No Adobe assets, ever:** no icons, screenshots, presets, profiles, LUTs or fonts from Adobe products. Every
+- **No proprietary assets, ever:** no icons, screenshots, presets, profiles, LUTs or fonts from commercial products. Every
   image, icon and font in the repo is original, public domain, Creative Commons, OFL or permissively licensed, and has
   an entry in [assets/ATTRIBUTION.md](assets/ATTRIBUTION.md) added in the same commit. New fonts go to
   [storytold/craft-fonts](https://github.com/storytold/craft-fonts), not here.
@@ -644,8 +644,6 @@ The ArtCraft name, wordmark and logos in [`docs/brand/`](docs/brand/) are tradem
 ArtCraft Team and are not covered by this license. They may be used only unmodified, and only as
 part of this repository and LightCraft, under [`docs/brand/LICENSE-brand.txt`](docs/brand/LICENSE-brand.txt).
 Forks and modified versions must remove them.
-
-<sub>Adobe, Photoshop, Illustrator, Premiere Pro, Lightroom, Acrobat, After Effects and InDesign are trademarks or registered trademarks of Adobe Inc. in the United States and/or other countries. LightCraft is an independent, open-source project and is not affiliated with, sponsored by or endorsed by Adobe Inc.; these names are used only to describe the workflows it is compatible with.</sub>
 
 <p align="center">
   <a href="https://getartcraft.com/"><img alt="ArtCraft" src="docs/brand/artcraft-mark.svg" width="28"></a><br>
