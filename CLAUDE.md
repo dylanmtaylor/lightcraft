@@ -67,6 +67,7 @@ of it. Full standard: `../craftrules/standards/never-crash.md`
   label, cancel)` for its whole run. It adopts the cancel flag the job already checks (`Cancel::Flag`), or uses
   `Cancel::No` when the job can't stop. No progress window, panel or progress toast of its own; its tests assert the row.
 - **Resolution independence:** settings use normalized image coordinates and relative radii; previews and exports must match.
+- **Time goes through `chrono`** (workspace dependency). Never hand-roll UTC/calendar conversion (days-to-date algorithms, leap-year math); a crate owns only its output format string.
 - **Quality gates** before every commit: `cargo xtask ci` (fmt, clippy -D warnings, tests, layers, assets, wasm).
 - **Commits:** one task id per commit (`M2.3: local Laplacian highlights/shadows`). Only green states. End messages with the attribution line required by the environment.
 

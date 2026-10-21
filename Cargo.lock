@@ -937,6 +937,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "chrono"
+version = "0.4.45"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "1aa79e62e7697b8e29b513a68abacf485adcd1fe8284a4316c5ae868e6633327"
+dependencies = [
+ "num-traits",
+]
+
+[[package]]
 name = "cipher"
 version = "0.4.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3080,6 +3089,7 @@ dependencies = [
 name = "lightcraft"
 version = "0.10.0"
 dependencies = [
+ "chrono",
  "eframe",
  "egui",
  "lightcraft-codecs",
@@ -3105,6 +3115,7 @@ dependencies = [
 name = "lightcraft-catalog"
 version = "0.10.0"
 dependencies = [
+ "chrono",
  "crc32fast",
  "lightcraft-develop",
  "lightcraft-geom",
@@ -3223,6 +3234,7 @@ name = "lightcraft-engine"
 version = "0.10.0"
 dependencies = [
  "ab_glyph",
+ "chrono",
  "craft-docpath",
  "harfrust",
  "jxl-oxide",
@@ -3378,6 +3390,7 @@ dependencies = [
 name = "lightcraft-meta"
 version = "0.10.0"
 dependencies = [
+ "chrono",
  "lightcraft-geom",
  "lightcraft-tiff",
  "proptest",

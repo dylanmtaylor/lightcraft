@@ -509,13 +509,12 @@ mod imp {
         if !(1..=12).contains(&m) || !(1..=31).contains(&d) {
             return None;
         }
-        // days from civil (proleptic Gregorian)
-        let y = if m <= 2 { y - 1 } else { y };
-        let era = y.div_euclid(400);
-        let yoe = y - era * 400;
-        let doy = (153 * (if m > 2 { m - 3 } else { m + 9 }) + 2) / 5 + d - 1;
-        let doe = yoe * 365 + yoe / 4 - yoe / 100 + doy;
-        Some((era * 146_097 + doe - 719_468) * 86_400 + hh * 3600 + mm * 60 + ss)
+        // Days since 1970-01-01 (proleptic Gregorian); a day past the month's length rolls over as
+        // the old Hinnant arithmetic did.
+        let first = chrono::NaiveDate::from_ymd_opt(i32::try_from(y).ok()?, u32::try_from(m).ok()?, 1)?;
+        let date = first.checked_add_days(chrono::Days::new(u64::try_from(d - 1).ok()?))?;
+        let days = (date - chrono::NaiveDate::from_ymd_opt(1970, 1, 1)?).num_days();
+        Some(days * 86_400 + hh * 3600 + mm * 60 + ss)
     }
 
     /// `faces.evaluate`: leave-one-out over the library's named faces, to see how well recognition works on *your*

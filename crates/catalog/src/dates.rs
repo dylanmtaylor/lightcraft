@@ -2,6 +2,7 @@
 //! weekday and month names, shifting a time by an offset, and grouping a photo list into runs of
 //! the same day / month / year (the date headers of the photo grid).
 
+use chrono::Datelike;
 use serde::{Deserialize, Serialize};
 
 pub use crate::stacks::iso_seconds;
@@ -11,32 +12,18 @@ pub const WEEKDAYS: [&str; 7] = ["Monday", "Tuesday", "Wednesday", "Thursday", "
 pub const MONTHS: [&str; 12] =
     ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
-/// Unix seconds → `YYYY-MM-DDTHH:MM:SS` (proleptic Gregorian; H. Hinnant's algorithm).
+/// Unix seconds → `YYYY-MM-DDTHH:MM:SS` (UTC, proleptic Gregorian). Out of chrono's range reads
+/// as the epoch (the callers here stay well inside years 0000–9999).
 pub fn civil(secs: i64) -> String {
-    let days = secs.div_euclid(86_400);
-    let rem = secs.rem_euclid(86_400);
-    let (y, m, d) = civil_from_days(days);
-    format!("{y:04}-{m:02}-{d:02}T{:02}:{:02}:{:02}", rem / 3600, rem % 3600 / 60, rem % 60)
-}
-
-/// Days since 1970-01-01 → (year, month 1..=12, day 1..=31).
-pub fn civil_from_days(days: i64) -> (i64, i64, i64) {
-    let z = days + 719_468;
-    let era = z.div_euclid(146_097);
-    let doe = z - era * 146_097;
-    let yoe = (doe - doe / 1460 + doe / 36_524 - doe / 146_096) / 365;
-    let doy = doe - (365 * yoe + yoe / 4 - yoe / 100);
-    let mp = (5 * doy + 2) / 153;
-    let d = doy - (153 * mp + 2) / 5 + 1;
-    let m = if mp < 10 { mp + 3 } else { mp - 9 };
-    (yoe + era * 400 + i64::from(m <= 2), m, d)
+    let t = chrono::DateTime::from_timestamp(secs, 0).unwrap_or_default();
+    t.format("%Y-%m-%dT%H:%M:%S").to_string()
 }
 
 /// Weekday name of an ISO date (`None` if it doesn't parse).
 pub fn weekday(iso: &str) -> Option<&'static str> {
     let days = iso_seconds(iso.get(..10)?)?.div_euclid(86_400);
-    // 1970-01-01 was a Thursday
-    Some(WEEKDAYS[(days + 3).rem_euclid(7) as usize])
+    let date = chrono::NaiveDate::from_num_days_from_ce_opt(i32::try_from(days.checked_add(719_163)?).ok()?)?;
+    Some(WEEKDAYS[date.weekday().num_days_from_monday() as usize])
 }
 
 /// Shift an ISO time by `secs`, keeping anything after the seconds (fractions, zone) as it was.
