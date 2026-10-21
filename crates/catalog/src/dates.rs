@@ -16,7 +16,8 @@ pub const MONTHS: [&str; 12] =
 /// as the epoch (the callers here stay well inside years 0000–9999).
 pub fn civil(secs: i64) -> String {
     let t = chrono::DateTime::from_timestamp(secs, 0).unwrap_or_default();
-    t.format("%Y-%m-%dT%H:%M:%S").to_string()
+    // `{:04}` rather than `%Y`, which writes a `+` before years past 9999 (the old `{y:04}` did not).
+    format!("{:04}-{}", t.year(), t.format("%m-%dT%H:%M:%S"))
 }
 
 /// Weekday name of an ISO date (`None` if it doesn't parse).
@@ -186,6 +187,8 @@ mod tests {
     fn calendar() {
         assert_eq!(civil(0), "1970-01-01T00:00:00");
         assert_eq!(civil(951_782_400), "2000-02-29T00:00:00");
+        // A year past 9999 keeps the plain zero-padded year (no `+`), as the old `{y:04}` did.
+        assert_eq!(civil(253_402_300_800), "10000-01-01T00:00:00");
         assert_eq!(weekday("2026-09-30"), Some("Wednesday"));
         assert_eq!(weekday("2026-10-01T09:00:00"), Some("Thursday"));
         assert_eq!(weekday("2000-02-29"), Some("Tuesday"));
