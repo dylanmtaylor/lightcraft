@@ -12,12 +12,25 @@ pub const WEEKDAYS: [&str; 7] = ["Monday", "Tuesday", "Wednesday", "Thursday", "
 pub const MONTHS: [&str; 12] =
     ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
 
-/// Unix seconds → `YYYY-MM-DDTHH:MM:SS` (UTC, proleptic Gregorian). Out of chrono's range reads
-/// as the epoch (the callers here stay well inside years 0000–9999).
+/// Unix seconds → `YYYY-MM-DDTHH:MM:SS` (UTC, proleptic Gregorian). A time outside chrono's year
+/// range still converts: the calendar repeats every 400 years, so the instant is moved into range
+/// by whole cycles and only the year is carried (matching the old `civil_from_days`), rather than
+/// resetting to the epoch. The callers here stay well inside years 0000–9999.
 pub fn civil(secs: i64) -> String {
-    let t = chrono::DateTime::from_timestamp(secs, 0).unwrap_or_default();
-    // `{:04}` rather than `%Y`, which writes a `+` before years past 9999 (the old `{y:04}` did not).
-    format!("{:04}-{}", t.year(), t.format("%m-%dT%H:%M:%S"))
+    let (days, sod) = (secs.div_euclid(86_400), secs.rem_euclid(86_400));
+    let (cycles, rest) = (days.div_euclid(146_097), days.rem_euclid(146_097));
+    // `rest + 719_163` (1970-01-01 is CE day 719_163) is always a valid CE day, and `sod` < 86_400.
+    let date = i32::try_from(rest + 719_163).ok().and_then(chrono::NaiveDate::from_num_days_from_ce_opt);
+    let time = u32::try_from(sod).ok().and_then(|s| chrono::NaiveTime::from_num_seconds_from_midnight_opt(s, 0));
+    match (date, time) {
+        (Some(d), Some(t)) => {
+            let y = i128::from(d.year()) + i128::from(cycles) * 400;
+            let y = i64::try_from(y).unwrap_or(if y < 0 { i64::MIN } else { i64::MAX });
+            // `{:04}` rather than `%Y`, which writes a `+` before years past 9999 (the old `{y:04}` did not).
+            format!("{y:04}-{}", d.and_time(t).format("%m-%dT%H:%M:%S"))
+        }
+        _ => "1970-01-01T00:00:00".to_string(), // unreachable
+    }
 }
 
 /// Weekday name of an ISO date (`None` if it doesn't parse).
@@ -189,6 +202,12 @@ mod tests {
         assert_eq!(civil(951_782_400), "2000-02-29T00:00:00");
         // A year past 9999 keeps the plain zero-padded year (no `+`), as the old `{y:04}` did.
         assert_eq!(civil(253_402_300_800), "10000-01-01T00:00:00");
+        // Beyond chrono's year range the old `civil_from_days` still converted; pin that output
+        // (never the epoch) in both directions and at the i64 extremes.
+        assert_eq!(civil(10_000_000_000_000), "318857-05-20T17:46:40");
+        assert_eq!(civil(-10_000_000_000_000), "-314918-08-13T06:13:20");
+        assert_eq!(civil(i64::MAX), "292277026596-12-04T15:30:07");
+        assert_eq!(civil(i64::MIN), "-292277022657-01-27T08:29:52");
         assert_eq!(weekday("2026-09-30"), Some("Wednesday"));
         assert_eq!(weekday("2026-10-01T09:00:00"), Some("Thursday"));
         assert_eq!(weekday("2000-02-29"), Some("Tuesday"));
