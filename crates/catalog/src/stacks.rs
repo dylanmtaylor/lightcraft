@@ -296,6 +296,9 @@ pub fn iso_seconds(s: &str) -> Option<i64> {
     }
     let (hh, mm, ss) =
         if s.len() >= 16 { (num(11, 13)?, num(14, 16)?, if s.get(16..17) == Some(":") { num(17, 19).unwrap_or(0) } else { 0 }) } else { (0, 0, 0) };
+    if hh >= 24 || mm >= 60 || ss >= 60 {
+        return None;
+    }
     // Days since 1970-01-01 (proleptic Gregorian). A day past the month's length rolls over the
     // way the old Hinnant arithmetic did (e.g. 2026-02-30 → 2026-03-02), which `normalize_iso`
     // relies on to reject impossible dates.
