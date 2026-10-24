@@ -164,10 +164,14 @@ mod tests {
 
     #[test]
     fn appended_lines_accumulate() {
+        // Exclusive, private: the pid-derived name in a shared /tmp can be planted by another account
+        // (CWE-59), so an existing directory fails the test instead of it symlinking inside.
         let dir = std::env::temp_dir().join(format!("lightcraft-testkit-{}", std::process::id()));
-        std::fs::create_dir_all(&dir).unwrap();
+        std::fs::create_dir(&dir).unwrap();
         let log = dir.join("skips.jsonl");
-        let _ = std::fs::remove_file(&log);
+        if std::fs::symlink_metadata(&log).is_ok() {
+            std::fs::remove_file(&log).unwrap();
+        }
         let threads: Vec<_> = (0..8)
             .map(|i| {
                 let log = log.clone();

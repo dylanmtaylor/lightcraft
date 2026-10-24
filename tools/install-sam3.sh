@@ -79,18 +79,32 @@ fi
 mkdir -p "$DIR"
 BASE="https://huggingface.co/$REPO/resolve/main"
 
+# The bearer header goes through a private temporary file, never argv: on systems that expose other
+# users' process arguments another local account could read the token from `ps` (CWE-214), but not a
+# 0600 file. curl's config format: `header = "..."`.
+if [ -n "$TOKEN" ]; then
+    AUTH_FILE=$(mktemp "${TMPDIR:-/tmp}/lightcraft-sam3-auth.XXXXXX")
+    trap 'rm -f "$AUTH_FILE"' EXIT
+    printf 'header = "Authorization: Bearer %s"\n' "$TOKEN" > "$AUTH_FILE"
+fi
+
 # fetch FILE DEST [resume]: HTTP errors never reach DEST (--fail writes no error page), and a
 # resume the server refuses (416) starts over instead of counting as done.
 fetch() {
     file=$1 dest=$2 resume=${3:-}
-    if [ -n "$TOKEN" ]; then auth="Authorization: Bearer $TOKEN"; else auth="X-No-Auth: 1"; fi
-    code=$(curl --proto '=https' -fsSL ${resume:+-C -} -H "$auth" -w '%{http_code}' -o "$dest" "$BASE/$file") || true
+    if [ -n "$TOKEN" ]; then
+        CURL_AUTH=(--config "$AUTH_FILE")
+    else
+        # not secret (no token is sent); kept in argv only to mirror the authenticated call shape
+        CURL_AUTH=(-H "X-No-Auth: 1")
+    fi
+    code=$(curl --proto '=https' -fsSL ${resume:+-C -} "${CURL_AUTH[@]}" -w '%{http_code}' -o "$dest" "$BASE/$file") || true
     case "$code" in
         200|206) return 0 ;;
         416)
             echo "the partial download of $file doesn't match the server's; starting over" >&2
             rm -f "$dest"
-            code=$(curl --proto '=https' -fsSL -H "$auth" -w '%{http_code}' -o "$dest" "$BASE/$file") || true
+            code=$(curl --proto '=https' -fsSL "${CURL_AUTH[@]}" -w '%{http_code}' -o "$dest" "$BASE/$file") || true
             [ "$code" = 200 ] && return 0
             echo "download of $REPO/$file failed ($code)" >&2; return 1 ;;
         401|403) echo "access denied to $REPO/$file (has your request for facebook/sam3 been approved?)" >&2; return 1 ;;

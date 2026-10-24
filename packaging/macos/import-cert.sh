@@ -18,8 +18,12 @@ if [[ -z "${APPLE_CERTIFICATE:-}" ]]; then
 fi
 
 TMP="${RUNNER_TEMP:-${TMPDIR:-/tmp}}"
-KEYCHAIN="$TMP/lightcraft-signing.keychain-db"
-CERT="$TMP/lightcraft-signing.p12"
+# A private directory (mktemp -d): a predictable name in a shared TMPDIR can be precreated by another
+# local account, and a plain redirect would then receive the private key archive (CWE-377). Encoded
+# signing material is written only inside the 0700 directory.
+CERTDIR="$(mktemp -d "$TMP/lightcraft-signing.XXXXXX")"
+KEYCHAIN="$CERTDIR/lightcraft-signing.keychain-db"
+CERT="$CERTDIR/lightcraft-signing.p12"
 KC_PASS="${KEYCHAIN_PASSWORD:-$(openssl rand -hex 24)}"
 
 trap 'rm -f "$CERT"' EXIT
