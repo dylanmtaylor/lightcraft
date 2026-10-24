@@ -171,6 +171,14 @@ fn probe_unguarded(bytes: &[u8]) -> Result<Info, Error> {
     // this only checks that every tile's bytes lie in the file.
     coded.sort_unstable();
     coded.dedup();
+    // heic-rs 0.1.4 caps the size of what it assembles, not the work: an item built from other
+    // items (`iloc` construction method 2) is rebuilt once per extent, so a chain of such items
+    // multiplies at every level while each result stays small. Count those visits from the
+    // `iloc` table before reconstructing anything.
+    let mut visits = 0_usize;
+    for &item in &coded {
+        item_visits(&ctx, item, 0, &mut visits)?;
+    }
     let mut reconstructed = 0_usize;
     for item in coded {
         reconstructed = reconstructed.saturating_add(ctx.item_data(item).map_err(err)?.len());
@@ -189,6 +197,36 @@ fn probe_unguarded(bytes: &[u8]) -> Result<Info, Error> {
         has_alpha: info.has_alpha,
         bit_depth: info.bit_depth,
     })
+}
+
+/// Most extent visits heic-rs may spend reconstructing the primary image's coded items; real
+/// files need one per tile (plus a few for the rare derived item).
+const MAX_ITEM_VISITS: usize = 4096;
+/// Deepest chain of items built from items we follow (heic-rs refuses beyond eight itself).
+const MAX_ITEM_CHAIN: u32 = 8;
+
+/// Adds to `visits` the extents heic-rs would read to reconstruct `id`, following items built
+/// from other items, and fails once that passes [`MAX_ITEM_VISITS`] or the chain is too deep.
+fn item_visits(ctx: &Context<'_>, id: u32, depth: u32, visits: &mut usize) -> Result<(), Error> {
+    use heic_rs::meta::iloc::Construction;
+    if depth > MAX_ITEM_CHAIN {
+        return Err(Error::Limit(format!("items built from items nest deeper than {MAX_ITEM_CHAIN} levels")));
+    }
+    let Some(loc) = ctx.meta.location(id) else { return Ok(()) };
+    *visits = visits.saturating_add(loc.extents.len().max(1));
+    if *visits > MAX_ITEM_VISITS {
+        return Err(Error::Limit(format!("reconstructing the image takes over {MAX_ITEM_VISITS} item extent reads")));
+    }
+    if loc.construction == Construction::Item {
+        for e in &loc.extents {
+            if let Ok(source) = u32::try_from(e.index)
+                && source != id
+            {
+                item_visits(ctx, source, depth + 1, visits)?;
+            }
+        }
+    }
+    Ok(())
 }
 
 /// Decodes the primary image, with its metadata.
