@@ -236,13 +236,11 @@ fn decode_jpeg_decoder(bytes: &[u8], m: &Markers, scale_to: Option<(u32, u32)>, 
     use jpeg_decoder::PixelFormat;
     let mut d = jpeg_decoder::Decoder::new(bytes);
     d.read_info().map_err(|e| Error::Malformed(F, e.to_string()))?;
-    // Its frame header is what a full-size decode allocates from: check it against the same
-    // limits the other decoders honour (a DCT-scaled decode is capped by its target box).
-    if scale_to.is_none()
-        && let Some(info) = d.info()
-    {
-        check_size(F, info.width as u64, info.height as u64, budget)?;
-    }
+    // Its frame header is what a decode allocates from (progressive coefficient buffers follow the
+    // unscaled MCU grid): check it against the same limits the other decoders honour, before any
+    // DCT scale is requested.
+    let info = d.info().ok_or_else(|| Error::Malformed(F, "no info".into()))?;
+    check_size(F, info.width as u64, info.height as u64, budget)?;
     // `scale` is the DCT size, not a lossless resample: on a lossless frame it would cut the
     // output to the top-left of each plane. Those decode at full size; `finish` scales after.
     if let Some((mw, mh)) = scale_to.filter(|_| m.sof != 0xC3) {
@@ -391,6 +389,9 @@ pub(crate) fn decode_codes8(bytes: &[u8]) -> Result<(usize, usize, usize, Vec<u8
         return Err(Error::Malformed(F, "no frame header".into()));
     }
     check_size(F, m.width as u64, m.height as u64, &DecodeOptions::default())?;
+    if m.app1 > MAX_APP1 {
+        return Err(Error::Malformed(F, "too many APP1 markers".into()));
+    }
     if !matches!(m.components, 1 | 3) || m.precision != 8 {
         return Err(Error::Malformed(F, "expected an 8-bit greyscale or RGB image".into()));
     }
