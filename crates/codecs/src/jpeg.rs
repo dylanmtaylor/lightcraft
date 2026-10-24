@@ -238,10 +238,10 @@ fn decode_jpeg_decoder(bytes: &[u8], m: &Markers, scale_to: Option<(u32, u32)>, 
     d.read_info().map_err(|e| Error::Malformed(F, e.to_string()))?;
     // Its frame header is what a full-size decode allocates from: check it against the same
     // limits the other decoders honour (a DCT-scaled decode is capped by its target box).
-    if scale_to.is_none() {
-        if let Some(info) = d.info() {
-            check_size(F, info.width as u64, info.height as u64, budget)?;
-        }
+    if scale_to.is_none()
+        && let Some(info) = d.info()
+    {
+        check_size(F, info.width as u64, info.height as u64, budget)?;
     }
     // `scale` is the DCT size, not a lossless resample: on a lossless frame it would cut the
     // output to the top-left of each plane. Those decode at full size; `finish` scales after.
