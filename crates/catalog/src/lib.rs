@@ -1067,21 +1067,50 @@ impl Catalog {
             st.photos.len() >= 2
         });
         let parents: Vec<(AlbumId, Option<AlbumId>)> = self.albums.values().map(|a| (a.id, a.parent)).collect();
+        // A folder chain is shared by every album under it, so each chain is validated once and its
+        // verdict is what later albums reused: a valid chain encoded in a flat snapshot made the old
+        // per-album walk quadratic in the album count (CWE-407).
+        enum Chain {
+            Ok,
+            Bad,
+        }
+        let mut chains: std::collections::HashMap<AlbumId, Chain> = std::collections::HashMap::new();
         for (id, parent) in parents {
             let Some(p) = parent else { continue };
-            let mut cur = Some(p);
-            let mut steps = 0usize;
-            let ok = loop {
-                match cur {
-                    None => break true,
-                    Some(c) if c == id || steps > self.albums.len() => break false,
-                    Some(c) => match self.albums.get(&c) {
-                        Some(a) if a.folder => cur = a.parent,
-                        _ => break false,
-                    },
+            if chains.contains_key(&id) {
+                continue;
+            }
+            // Walk up from `p` once, recording everything seen; what it reaches decides every node
+            // walked (a chain already judged by an earlier album stops the walk early — the rest of
+            // the chain was judged then).
+            let mut walked: Vec<AlbumId> = Vec::new();
+            let ok = {
+                let mut cur = Some(p);
+                let mut on: std::collections::HashSet<AlbumId> = std::collections::HashSet::new();
+                loop {
+                    match cur {
+                        None => break true,
+                        Some(c) => {
+                            if c == id || !on.insert(c) {
+                                break false;
+                            }
+                            match chains.get(&c) {
+                                Some(Chain::Bad) => break false,
+                                Some(Chain::Ok) => break true,
+                                None => {}
+                            }
+                            match self.albums.get(&c) {
+                                Some(a) if a.folder => walked.push(c),
+                                _ => break false,
+                            }
+                            cur = self.albums[&c].parent;
+                        }
+                    }
                 }
-                steps += 1;
             };
+            for c in walked {
+                chains.insert(c, if ok { Chain::Ok } else { Chain::Bad });
+            }
             if !ok && let Some(a) = self.albums.get_mut(&id) {
                 changed.push(format!("album {}: its folder {} is missing, not a folder or inside it: moved to the top level", id.0, p.0));
                 a.parent = None;
