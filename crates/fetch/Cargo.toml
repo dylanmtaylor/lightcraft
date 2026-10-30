@@ -12,6 +12,7 @@ workspace = true
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 log = { workspace = true }
 rustls = { version = "0.23", default-features = false, features = ["std", "tls12"] }
-rustls-rustcrypto = "0.0.2-alpha"
+# Pinned to a master commit: the 0.0.2-alpha release depends on rustls-webpki 0.102 (CVE-2026-93599 and others); master uses 0.103 via rustls 0.23. Back to crates.io once a release ships.
+rustls-rustcrypto = { git = "https://github.com/RustCrypto/rustls-rustcrypto", rev = "70f76c039e587192688af18a80d5d6435dedaf22" }
 webpki-roots = "1"
 sha2 = { version = "0.10", default-features = false, features = ["std"] }
