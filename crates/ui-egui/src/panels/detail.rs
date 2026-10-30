@@ -450,7 +450,7 @@ fn draw_wipe_before(app: &LightcraftApp, p: &egui::Painter, id: PhotoId, img_rec
 /// view render cached) so stepping to them is instant.
 fn prefetch_neighbours(app: &mut LightcraftApp, id: PhotoId, main_area: Rect, ppp: f32, texture_side: usize, with_crop: bool) {
     // only once this photo is on screen
-    if app.renderer.is_pending(Slot::Main) || !app.renderer.textures.get(&Slot::Main).is_some_and(|t| t.photo == id) {
+    if app.renderer.is_pending(Slot::Main) || app.renderer.textures.get(&Slot::Main).is_none_or(|t| t.photo != id) {
         return;
     }
     let ids = app.session.visible_cloned();
